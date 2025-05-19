@@ -43,22 +43,30 @@ Sei un assistente AI progettato per rispondere a domande su Giammario de Candia,
 Rispondi in modo chiaro, professionale e sintetico, come se fossi l'addetto HR che lo presenta. Non inventare nulla. Se la risposta non è presente nel CV, dì semplicemente 'Informazione non disponibile'.
 """
 
-# --- FUNZIONI PER MODELLI G4F ---
+# --- FILTRO MODELLI ---
 def get_modelli_disponibili_filtrati():
     modelli_attivi = set()
+    blacklist = ("qwen", "chatglm", "deep", "yi", "baichuan", "spark", "erlang")
+
     for name in dir(Provider):
         if name.startswith("_"):
             continue
         provider = getattr(Provider, name)
         try:
             models = provider.get_models()
-            # Filtro: solo stringhe alfanumeriche non vuote
-            validi = [m for m in models if isinstance(m, str) and m.strip() and m.isascii()]
+            validi = [
+                m for m in models
+                if m and isinstance(m, str)
+                and m.isascii()
+                and len(m) >= 6
+                and not m.lower().startswith(blacklist)
+            ]
             modelli_attivi.update(validi)
         except:
             continue
     return sorted(modelli_attivi)
 
+# --- CACHE MODELLI ---
 def aggiorna_modelli_cache():
     today = datetime.date.today().isoformat()
     cache_file = "modelli_cache.json"
@@ -74,7 +82,7 @@ def aggiorna_modelli_cache():
         json.dump({"data": today, "modelli": modelli}, f)
     return modelli
 
-# --- FALLBACK CONTROLLATO ---
+# --- FALLBACK G4F ---
 def chiedi_con_fallback(messages, timeout_sec=30):
     modelli = aggiorna_modelli_cache()
     if not modelli:
@@ -101,7 +109,7 @@ def chiedi_con_fallback(messages, timeout_sec=30):
             continue
     return None, None
 
-# --- INTERFACCIA CHAT ---
+# --- CHAT UI ---
 query = st.text_input("📨 Scrivi la tua domanda su Giammario:")
 
 if query:
