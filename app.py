@@ -33,7 +33,6 @@ def estrai_testo_cv(path):
 cv_text = estrai_testo_cv("Cv de Candia .pdf")
 
 # --- PREPARAZIONE PROMPT ---
-client = Client()
 prompt_base = f"""
 Sei un assistente AI progettato per rispondere a domande su Giammario de Candia, basandoti esclusivamente sulle informazioni seguenti:
 
@@ -42,31 +41,42 @@ Sei un assistente AI progettato per rispondere a domande su Giammario de Candia,
 Rispondi in modo chiaro, professionale e conciso, come se fossi l'addetto HR che lo presenta.
 """
 
+# --- FALLBACK AI ENGINE ---
+def chiedi_con_fallback(messages, modelli=["gpt-4o-mini", "claude-3-haiku", "mistral-7b"]):
+    for modello in modelli:
+        try:
+            st.info(f"💡 Sto provando con: `{modello}`", icon="ℹ️")
+            client = Client()
+            risposta = client.chat.completions.create(
+                model=modello,
+                messages=messages
+            ).choices[0].message.content.strip()
+            if risposta:
+                return risposta, modello
+        except Exception as e:
+            st.warning(f"⚠️ Fallito con `{modello}`: {e}")
+            continue
+    return None, None
+
 # --- CHAT ---
 query = st.text_input("📨 Scrivi la tua domanda su Giammario:")
 
 if query:
     with st.spinner("Sto pensando..."):
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": prompt_base},
-                    {"role": "user", "content": query},
-                ]
-            )
-            risposta = response.choices[0].message.content.strip()
+        messages = [
+            {"role": "system", "content": prompt_base},
+            {"role": "user", "content": query},
+        ]
+        risposta, modello_usato = chiedi_con_fallback(messages)
 
-            if risposta:
-                st.success("📌 Risposta dell'agente:")
-                st.markdown(
-                    f"<div style='background-color:#1f2937;padding:10px;border-radius:10px;'>{risposta}</div>",
-                    unsafe_allow_html=True
-                )
-            else:
-                st.warning("🤖 Nessuna risposta ricevuta. Prova a riformulare la domanda.")
-        except Exception as e:
-            st.error(f"❌ Errore durante la generazione della risposta: {e}")
+        if risposta:
+            st.success(f"📌 Risposta dell'agente (modello: `{modello_usato}`):")
+            st.markdown(
+                f"<div style='background-color:#1f2937;padding:10px;border-radius:10px;'>{risposta}</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.error("❌ Nessun modello ha risposto. Riprova più tardi.")
 
 # --- FOOTER ---
 st.markdown("""
