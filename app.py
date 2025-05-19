@@ -42,19 +42,23 @@ Sei un assistente AI progettato per rispondere a domande su Giammario de Candia,
 Rispondi in modo chiaro, professionale e sintetico, come se fossi l'addetto HR che lo presenta. Non inventare nulla. Se la risposta non è presente nel CV, dì semplicemente 'Informazione non disponibile'.
 """
 
-# --- FALLBACK CON TIMEOUT SIMULATO ---
-def chiedi_con_fallback(messages, modelli=["gpt-4o-mini", "claude-3-haiku", "mistral-7b"], timeout_sec=20):
+# --- FALLBACK SU MODELLI g4f STABILI ---
+def chiedi_con_fallback(messages, modelli=None, timeout_sec=30):
+    if modelli is None:
+        modelli = ["gpt-4o-mini", "gpt-3.5-turbo", "llama3-8b", "gemini-pro"]
+
     for modello in modelli:
         try:
             st.info(f"💡 Sto provando con: `{modello}`", icon="ℹ️")
             client = Client()
+
             start = time.time()
             risposta = client.chat.completions.create(
                 model=modello,
                 messages=messages
             ).choices[0].message.content.strip()
-            elapsed = time.time() - start
 
+            elapsed = time.time() - start
             if elapsed > timeout_sec:
                 st.warning(f"⏱️ Timeout superato ({int(elapsed)}s), passo al prossimo modello...")
                 continue
