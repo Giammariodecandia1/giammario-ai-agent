@@ -43,7 +43,7 @@ Sei un assistente AI progettato per rispondere a domande su Giammario de Candia,
 Rispondi in modo chiaro, professionale e sintetico, come se fossi l'addetto HR che lo presenta. Non inventare nulla. Se la risposta non è presente nel CV, dì semplicemente 'Informazione non disponibile'.
 """
 
-# --- FILTRO MODELLI ---
+# --- MODELLI ATTIVI G4F FILTRATI ---
 def get_modelli_disponibili_filtrati():
     modelli_attivi = set()
     blacklist = ("qwen", "chatglm", "deep", "yi", "baichuan", "spark", "erlang")
@@ -66,7 +66,6 @@ def get_modelli_disponibili_filtrati():
             continue
     return sorted(modelli_attivi)
 
-# --- CACHE MODELLI ---
 def aggiorna_modelli_cache():
     today = datetime.date.today().isoformat()
     cache_file = "modelli_cache.json"
@@ -82,12 +81,11 @@ def aggiorna_modelli_cache():
         json.dump({"data": today, "modelli": modelli}, f)
     return modelli
 
-# --- FALLBACK G4F ---
+# --- FALLBACK: prima GPT-4o-mini, poi gli altri ---
 def chiedi_con_fallback(messages, timeout_sec=30):
-    modelli = aggiorna_modelli_cache()
-    if not modelli:
-        st.error("⚠️ Nessun modello disponibile oggi da g4f.")
-        return None, None
+    priorita = ["gpt-4o-mini"]
+    altri = [m for m in aggiorna_modelli_cache() if m not in priorita]
+    modelli = priorita + altri
 
     for modello in modelli:
         try:
@@ -109,7 +107,7 @@ def chiedi_con_fallback(messages, timeout_sec=30):
             continue
     return None, None
 
-# --- CHAT UI ---
+# --- UI CHAT ---
 query = st.text_input("📨 Scrivi la tua domanda su Giammario:")
 
 if query:
@@ -134,3 +132,4 @@ st.markdown("""
     <hr style="margin-top: 40px;">
     <p style='text-align: center; font-size: 12px;'>Powered by g4f • Tema droni notturni • Codice sviluppato per Giammario</p>
 """, unsafe_allow_html=True)
+
