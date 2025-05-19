@@ -43,29 +43,30 @@ Sei un assistente AI progettato per rispondere a domande su Giammario de Candia,
 Rispondi in modo chiaro, professionale e sintetico, come se fossi l'addetto HR che lo presenta. Non inventare nulla. Se la risposta non è presente nel CV, dì semplicemente 'Informazione non disponibile'.
 """
 
-# --- MODELLI ATTIVI G4F FILTRATI ---
-def get_modelli_disponibili_filtrati():
-    modelli_attivi = set()
-    blacklist = ("qwen", "chatglm", "deep", "yi", "baichuan", "spark", "erlang")
+# --- FILTRO PROVIDER & MODELLI ---
+def get_modelli_filtrati_da_provider():
+    modelli_validi = set()
+    provider_blacklist = ("aichatos", "deepseek", "yichat", "qwen", "chatglm", "spark", "baichuan", "yi", "zhipu")
 
     for name in dir(Provider):
-        if name.startswith("_"):
+        if name.startswith("_") or name.lower().startswith(provider_blacklist):
             continue
         provider = getattr(Provider, name)
         try:
             models = provider.get_models()
             validi = [
                 m for m in models
-                if m and isinstance(m, str)
+                if isinstance(m, str)
+                and m.strip()
                 and m.isascii()
                 and len(m) >= 6
-                and not m.lower().startswith(blacklist)
             ]
-            modelli_attivi.update(validi)
+            modelli_validi.update(validi)
         except:
             continue
-    return sorted(modelli_attivi)
+    return sorted(modelli_validi)
 
+# --- CACHE MODELLI ---
 def aggiorna_modelli_cache():
     today = datetime.date.today().isoformat()
     cache_file = "modelli_cache.json"
@@ -76,12 +77,12 @@ def aggiorna_modelli_cache():
         if dati.get("data") == today:
             return dati["modelli"]
 
-    modelli = get_modelli_disponibili_filtrati()
+    modelli = get_modelli_filtrati_da_provider()
     with open(cache_file, "w") as f:
         json.dump({"data": today, "modelli": modelli}, f)
     return modelli
 
-# --- FALLBACK: prima GPT-4o-mini, poi gli altri ---
+# --- FALLBACK SEQUENZA ---
 def chiedi_con_fallback(messages, timeout_sec=30):
     priorita = ["gpt-4o-mini"]
     altri = [m for m in aggiorna_modelli_cache() if m not in priorita]
@@ -132,4 +133,3 @@ st.markdown("""
     <hr style="margin-top: 40px;">
     <p style='text-align: center; font-size: 12px;'>Powered by g4f • Tema droni notturni • Codice sviluppato per Giammario</p>
 """, unsafe_allow_html=True)
-
