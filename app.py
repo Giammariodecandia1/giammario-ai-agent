@@ -1,9 +1,11 @@
+
 import streamlit as st
 from g4f.client import Client
+from g4f import Provider
 import pdfplumber
-import time
+import time, json, os, datetime
 
-# --- SETUP INTERFACCIA ---
+# --- SETUP UI ---
 st.set_page_config(page_title="Giammario AI", page_icon="🛸", layout="centered")
 st.markdown("""
     <style>
@@ -33,7 +35,7 @@ def estrai_testo_cv(path):
 
 cv_text = estrai_testo_cv("Cv de Candia .pdf")
 
-# --- PREPARAZIONE PROMPT BASE ---
+# --- PROMPT BASE ---
 prompt_base = f"""
 Sei un assistente AI progettato per rispondere a domande su Giammario de Candia, basandoti esclusivamente sulle informazioni seguenti:
 
@@ -42,27 +44,56 @@ Sei un assistente AI progettato per rispondere a domande su Giammario de Candia,
 Rispondi in modo chiaro, professionale e sintetico, come se fossi l'addetto HR che lo presenta. Non inventare nulla. Se la risposta non è presente nel CV, dì semplicemente 'Informazione non disponibile'.
 """
 
-# --- FALLBACK SU MODELLI g4f STABILI ---
-def chiedi_con_fallback(messages, modelli=None, timeout_sec=30):
-    if modelli is None:
-        modelli = ["gpt-4o-mini", "gpt-3.5-turbo", "llama3-8b", "gemini-pro"]
+# --- MODELLO DINAMICO: SCANSIONE E CACHE ---
+def get_modelli_disponibili():
+    modelli_attivi = set()
+    for name in dir(Provider):
+        if name.startswith("_"):
+            continue
+        provider = getattr(Provider, name)
+        try:
+            models = provider.get_models()
+            if models:
+                modelli_attivi.update(models)
+        except:
+            continue
+    return sorted(modelli_attivi)
+
+def aggiorna_modelli_cache():
+    today = datetime.date.today().isoformat()
+    cache_file = "modelli_cache.json"
+
+    if os.path.exists(cache_file):
+        with open(cache_file, "r") as f:
+            dati = json.load(f)
+        if dati.get("data") == today:
+            return dati["modelli"]
+
+    modelli = get_modelli_disponibili()
+    with open(cache_file, "w") as f:
+        json.dump({"data": today, "modelli": modelli}, f)
+    return modelli
+
+# --- FALLBACK G4F MODELLI VALIDI ---
+def chiedi_con_fallback(messages, timeout_sec=30):
+    modelli = aggiorna_modelli_cache()
+    if not modelli:
+        st.error("⚠️ Nessun modello disponibile oggi da g4f.")
+        return None, None
 
     for modello in modelli:
         try:
             st.info(f"💡 Sto provando con: `{modello}`", icon="ℹ️")
             client = Client()
-
             start = time.time()
             risposta = client.chat.completions.create(
                 model=modello,
                 messages=messages
             ).choices[0].message.content.strip()
-
             elapsed = time.time() - start
             if elapsed > timeout_sec:
                 st.warning(f"⏱️ Timeout superato ({int(elapsed)}s), passo al prossimo modello...")
                 continue
-
             if risposta:
                 return risposta, modello
         except Exception as e:
@@ -70,7 +101,7 @@ def chiedi_con_fallback(messages, modelli=None, timeout_sec=30):
             continue
     return None, None
 
-# --- CHAT ---
+# --- CHAT UI ---
 query = st.text_input("📨 Scrivi la tua domanda su Giammario:")
 
 if query:
@@ -88,7 +119,7 @@ if query:
                 unsafe_allow_html=True
             )
         else:
-            st.error("❌ Nessun modello ha risposto. Il sistema potrebbe essere sovraccarico. Riprova tra poco o poni una domanda più semplice.")
+            st.error("❌ Nessun modello ha risposto. Il sistema potrebbe essere sovraccarico. Riprova più tardi.")
 
 # --- FOOTER ---
 st.markdown("""
