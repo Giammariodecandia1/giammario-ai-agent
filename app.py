@@ -1,6 +1,7 @@
 import streamlit as st
 from g4f.client import Client
 import pdfplumber
+import time
 
 # --- SETUP INTERFACCIA ---
 st.set_page_config(page_title="Giammario AI", page_icon="🛸", layout="centered")
@@ -32,25 +33,32 @@ def estrai_testo_cv(path):
 
 cv_text = estrai_testo_cv("Cv de Candia .pdf")
 
-# --- PREPARAZIONE PROMPT ---
+# --- PREPARAZIONE PROMPT BASE ---
 prompt_base = f"""
 Sei un assistente AI progettato per rispondere a domande su Giammario de Candia, basandoti esclusivamente sulle informazioni seguenti:
 
 {cv_text}
 
-Rispondi in modo chiaro, professionale e conciso, come se fossi l'addetto HR che lo presenta.
+Rispondi in modo chiaro, professionale e sintetico, come se fossi l'addetto HR che lo presenta. Non inventare nulla. Se la risposta non è presente nel CV, dì semplicemente 'Informazione non disponibile'.
 """
 
-# --- FALLBACK AI ENGINE ---
-def chiedi_con_fallback(messages, modelli=["gpt-4o-mini", "claude-3-haiku", "mistral-7b"]):
+# --- FALLBACK CON TIMEOUT SIMULATO ---
+def chiedi_con_fallback(messages, modelli=["gpt-4o-mini", "claude-3-haiku", "mistral-7b"], timeout_sec=20):
     for modello in modelli:
         try:
             st.info(f"💡 Sto provando con: `{modello}`", icon="ℹ️")
             client = Client()
+            start = time.time()
             risposta = client.chat.completions.create(
                 model=modello,
                 messages=messages
             ).choices[0].message.content.strip()
+            elapsed = time.time() - start
+
+            if elapsed > timeout_sec:
+                st.warning(f"⏱️ Timeout superato ({int(elapsed)}s), passo al prossimo modello...")
+                continue
+
             if risposta:
                 return risposta, modello
         except Exception as e:
@@ -65,7 +73,7 @@ if query:
     with st.spinner("Sto pensando..."):
         messages = [
             {"role": "system", "content": prompt_base},
-            {"role": "user", "content": query},
+            {"role": "user", "content": f"Rispondi in meno di 300 parole. {query}"},
         ]
         risposta, modello_usato = chiedi_con_fallback(messages)
 
@@ -76,7 +84,7 @@ if query:
                 unsafe_allow_html=True
             )
         else:
-            st.error("❌ Nessun modello ha risposto. Riprova più tardi.")
+            st.error("❌ Nessun modello ha risposto. Il sistema potrebbe essere sovraccarico. Riprova tra poco o poni una domanda più semplice.")
 
 # --- FOOTER ---
 st.markdown("""
