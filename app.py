@@ -1,11 +1,10 @@
-
 import streamlit as st
 from g4f.client import Client
 from g4f import Provider
 import pdfplumber
 import time, json, os, datetime
 
-# --- SETUP UI ---
+# --- UI SETUP ---
 st.set_page_config(page_title="Giammario AI", page_icon="🛸", layout="centered")
 st.markdown("""
     <style>
@@ -44,8 +43,8 @@ Sei un assistente AI progettato per rispondere a domande su Giammario de Candia,
 Rispondi in modo chiaro, professionale e sintetico, come se fossi l'addetto HR che lo presenta. Non inventare nulla. Se la risposta non è presente nel CV, dì semplicemente 'Informazione non disponibile'.
 """
 
-# --- MODELLO DINAMICO: SCANSIONE E CACHE ---
-def get_modelli_disponibili():
+# --- FUNZIONI PER MODELLI G4F ---
+def get_modelli_disponibili_filtrati():
     modelli_attivi = set()
     for name in dir(Provider):
         if name.startswith("_"):
@@ -53,8 +52,9 @@ def get_modelli_disponibili():
         provider = getattr(Provider, name)
         try:
             models = provider.get_models()
-            if models:
-                modelli_attivi.update(models)
+            # Filtro: solo stringhe alfanumeriche non vuote
+            validi = [m for m in models if isinstance(m, str) and m.strip() and m.isascii()]
+            modelli_attivi.update(validi)
         except:
             continue
     return sorted(modelli_attivi)
@@ -69,12 +69,12 @@ def aggiorna_modelli_cache():
         if dati.get("data") == today:
             return dati["modelli"]
 
-    modelli = get_modelli_disponibili()
+    modelli = get_modelli_disponibili_filtrati()
     with open(cache_file, "w") as f:
         json.dump({"data": today, "modelli": modelli}, f)
     return modelli
 
-# --- FALLBACK G4F MODELLI VALIDI ---
+# --- FALLBACK CONTROLLATO ---
 def chiedi_con_fallback(messages, timeout_sec=30):
     modelli = aggiorna_modelli_cache()
     if not modelli:
@@ -101,7 +101,7 @@ def chiedi_con_fallback(messages, timeout_sec=30):
             continue
     return None, None
 
-# --- CHAT UI ---
+# --- INTERFACCIA CHAT ---
 query = st.text_input("📨 Scrivi la tua domanda su Giammario:")
 
 if query:
@@ -113,13 +113,13 @@ if query:
         risposta, modello_usato = chiedi_con_fallback(messages)
 
         if risposta:
-            st.success(f"📌 Risposta dell'agente (modello: `{modello_usato}`):")
+            st.success(f"📌 Risposta dell'agente (modello: `{modello_usato or 'sconosciuto'}`):")
             st.markdown(
                 f"<div style='background-color:#1f2937;padding:10px;border-radius:10px;'>{risposta}</div>",
                 unsafe_allow_html=True
             )
         else:
-            st.error("❌ Nessun modello ha risposto. Il sistema potrebbe essere sovraccarico. Riprova più tardi.")
+            st.error("❌ Nessun modello ha risposto. Il sistema potrebbe essere sovraccarico o bloccato. Riprova più tardi.")
 
 # --- FOOTER ---
 st.markdown("""
