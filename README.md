@@ -37,6 +37,17 @@ Segui questi passaggi per eseguire il progetto in locale:
 
 L'app sarà accessibile nel tuo browser all'indirizzo `http://localhost:8501`.
 
+## 🌐 Deploy Online
+
+Puoi pubblicare facilmente questa applicazione online utilizzando **Streamlit Community Cloud**:
+
+1. Carica il codice su un repository **GitHub**.
+2. Accedi a [share.streamlit.io](https://share.streamlit.io/).
+3. Clicca su "New app" e seleziona il repository, il branch e il file `app.py`.
+4. Clicca su **Deploy!**
+
+L'app gestirà automaticamente l'installazione delle dipendenze tramite il file `requirements.txt`.
+
 ## 📂 Struttura del Progetto
 
 - `app.py`: Il file principale che contiene la logica dell'interfaccia Streamlit, l'estrazione del testo dal PDF e l'integrazione con l'AI.
