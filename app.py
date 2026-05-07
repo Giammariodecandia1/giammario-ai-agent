@@ -4,6 +4,9 @@ from g4f import Provider
 import pdfplumber
 import time, json, os, datetime
 
+# --- CONFIGURAZIONE ---
+CV_PATH = "CV de Candia.pdf"
+
 # --- UI SETUP ---
 st.set_page_config(page_title="Giammario AI", page_icon="🛸", layout="centered")
 st.markdown("""
@@ -26,13 +29,18 @@ st.markdown("""
 
 # --- LETTURA CV ---
 def estrai_testo_cv(path):
+    if not os.path.exists(path):
+        st.error(f"⚠️ File '{path}' non trovato!")
+        return ""
     try:
         with pdfplumber.open(path) as pdf:
-            return "\n".join([page.extract_text() for page in pdf if page.extract_text()])
+            # Use pdf.pages to ensure compatibility with all versions of pdfplumber
+            return "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
     except Exception as e:
-        return f"⚠️ Errore nella lettura del CV: {e}"
+        st.error(f"⚠️ Errore nella lettura del CV: {e}")
+        return ""
 
-cv_text = estrai_testo_cv("Cv de Candia .pdf")
+cv_text = estrai_testo_cv(CV_PATH)
 
 # --- PROMPT BASE ---
 prompt_base = f"""
