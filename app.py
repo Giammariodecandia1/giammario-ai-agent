@@ -34,7 +34,6 @@ def estrai_testo_cv(path):
         return ""
     try:
         with pdfplumber.open(path) as pdf:
-            # Use pdf.pages to ensure compatibility with all versions of pdfplumber
             return "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
     except Exception as e:
         st.error(f"⚠️ Errore nella lettura del CV: {e}")
