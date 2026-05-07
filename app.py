@@ -85,6 +85,13 @@ with st.sidebar:
         if st.button(domanda):
             st.session_state.suggested_query = domanda
 
+    st.markdown("---")
+    st.subheader("🎯 Modalità Risposta")
+    modalita = st.selectbox(
+        "Scegli il tono della risposta:",
+        ["Sintesi recruiter", "Dettaglio tecnico", "Project management", "Droni e UAV", "AI e automazione"]
+    )
+
 # --- HEADER PRINCIPALE ---
 st.title("💼 Giammario de Candia - AI Professional Profile")
 st.markdown("""
@@ -104,6 +111,15 @@ if "suggested_query" not in st.session_state:
 query = st.text_input("📨 Scrivi la tua domanda su Giammario:", value=st.session_state.suggested_query, placeholder="Esempio: Quali sono le sue competenze tecniche?")
 
 # --- PROMPT BASE ---
+# Mappatura istruzioni per modalità
+istruzioni_modalita = {
+    "Sintesi recruiter": "Fornisci una risposta sintetica, evidenziando i punti di forza e il valore aggiunto per un'azienda.",
+    "Dettaglio tecnico": "Fornisci una risposta tecnica e dettagliata, focalizzandoti su strumenti, linguaggi e metodologie.",
+    "Project management": "Focalizzati sulle capacità di gestione, coordinamento, scadenze e metodologie di lavoro.",
+    "Droni e UAV": "Evidenzia le competenze specifiche nel settore droni, pilotaggio, normativa e tecnologia UAV.",
+    "AI e automazione": "Metti in risalto le competenze in intelligenza artificiale, machine learning e automazione dei processi."
+}
+
 prompt_base = f"""
 Sei un assistente AI professionale specializzato nel presentare il profilo di Giammario de Candia a recruiter, aziende e potenziali collaboratori.
 Il tuo obiettivo è rispondere alle domande basandoti ESCLUSIVAMENTE sulle informazioni contenute nel CV fornito di seguito.
@@ -113,7 +129,7 @@ Il tuo obiettivo è rispondere alle domande basandoti ESCLUSIVAMENTE sulle infor
 2. **Onestà**: Se un'informazione non è presente nel CV, rispondi esattamente: "Informazione non disponibile nel CV."
 3. **Professionalità**: Mantieni un tono professionale, strutturato e utile. Rispondi come se fossi un esperto HR che presenta il candidato.
 4. **Lingua**: Rispondi sempre in italiano, a meno che l'utente non ti rivolga una domanda in un'altra lingua o ti chieda esplicitamente di tradurre.
-5. **Adattabilità**: Adatta il focus della risposta in base al contesto della domanda (es. evidenzia aspetti di Project Management se richiesto, o competenze tecniche in ambito Droni/UAV, AI e Automazione se pertinente).
+5. **Focus Selezionato**: {istruzioni_modalita[modalita]}
 6. **Sintesi**: Sii conciso ma esaustivo. Usa elenchi puntati se aiuta la leggibilità.
 
 ### TESTO DEL CV:
