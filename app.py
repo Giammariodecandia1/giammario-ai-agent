@@ -4,43 +4,136 @@ from g4f import Provider
 import pdfplumber
 import time, json, os, datetime
 
+# --- CONFIGURAZIONE ---
+CV_PATH = "CV de Candia.pdf"
+
 # --- UI SETUP ---
-st.set_page_config(page_title="Giammario AI", page_icon="🛸", layout="centered")
+st.set_page_config(page_title="Giammario AI Assistant", page_icon="💼", layout="wide")
+
+# CSS personalizzato per migliorare l'estetica
 st.markdown("""
     <style>
-    body {
+    .main {
         background-color: #0c0f13;
-        color: #f2f2f2;
-        font-family: 'Segoe UI', sans-serif;
     }
     .stTextInput>div>div>input {
         color: white;
     }
+    .stButton>button {
+        width: 100%;
+        text-align: left;
+        border-radius: 5px;
+        background-color: #1f2937;
+        color: #f2f2f2;
+        border: 1px solid #374151;
+    }
+    .stButton>button:hover {
+        border-color: #00bfff;
+        color: #00bfff;
+    }
+    .sidebar .sidebar-content {
+        background-color: #111827;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-    <h1 style='text-align: center; color: #00bfff;'>🛸 Giammario Drone AI Assistant</h1>
-    <p style='text-align: center;'>Chiedimi qualsiasi cosa sul profilo di Giammario de Candia!</p>
-""", unsafe_allow_html=True)
-
 # --- LETTURA CV ---
+@st.cache_data
 def estrai_testo_cv(path):
+    if not os.path.exists(path):
+        return None, 0
     try:
         with pdfplumber.open(path) as pdf:
-            return "\n".join([page.extract_text() for page in pdf if page.extract_text()])
+            testo = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+            return testo, len(testo)
     except Exception as e:
-        return f"⚠️ Errore nella lettura del CV: {e}"
+        return None, 0
 
-cv_text = estrai_testo_cv("Cv de Candia .pdf")
+cv_text, char_count = estrai_testo_cv(CV_PATH)
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.header("🛸 Sistema")
+    st.markdown("---")
+
+    # Sezione Info
+    st.subheader("📊 Stato del Sistema")
+    if char_count > 0:
+        st.success(f"✅ CV caricato correttamente")
+        st.info(f"📁 **File:** {CV_PATH}")
+        st.write(f"📝 **Caratteri estratti:** {char_count}")
+    else:
+        st.error(f"❌ Errore nel caricamento del CV")
+        if not os.path.exists(CV_PATH):
+            st.warning(f"File '{CV_PATH}' non trovato.")
+        else:
+            st.warning("Impossibile estrarre testo dal file. Potrebbe essere un PDF basato su immagini.")
+
+    st.markdown("---")
+    st.subheader("⚡ Domande rapide")
+
+    domande_rapide = [
+        "Presentami il profilo di Giammario in 5 righe.",
+        "Quali sono le sue competenze principali?",
+        "Qual è la sua esperienza nei droni?",
+        "Qual è la sua esperienza nel project management?",
+        "Quali competenze ha in ambito AI?",
+        "Per quali ruoli professionali è più adatto?"
+    ]
+
+    for domanda in domande_rapide:
+        if st.button(domanda):
+            st.session_state.suggested_query = domanda
+
+    st.markdown("---")
+    st.subheader("🎯 Modalità Risposta")
+    modalita = st.selectbox(
+        "Scegli il tono della risposta:",
+        ["Sintesi recruiter", "Dettaglio tecnico", "Project management", "Droni e UAV", "AI e automazione"]
+    )
+
+# --- HEADER PRINCIPALE ---
+st.title("💼 Giammario de Candia - AI Professional Profile")
+st.markdown("""
+    Benvenuto nell'assistente AI dedicato al profilo professionale di **Giammario de Candia**.
+    Questa applicazione utilizza l'intelligenza artificiale per analizzare il CV di Giammario e rispondere alle tue curiosità in modo preciso e professionale.
+
+    *Nota: L'assistente risponde esclusivamente sulla base delle informazioni contenute nel documento ufficiale.*
+""")
+
+st.divider()
+
+# --- LOGICA CHAT ---
+if "suggested_query" not in st.session_state:
+    st.session_state.suggested_query = ""
+
+# Input utente
+query = st.text_input("📨 Scrivi la tua domanda su Giammario:", value=st.session_state.suggested_query, placeholder="Esempio: Quali sono le sue competenze tecniche?")
 
 # --- PROMPT BASE ---
+# Mappatura istruzioni per modalità
+istruzioni_modalita = {
+    "Sintesi recruiter": "Fornisci una risposta sintetica, evidenziando i punti di forza e il valore aggiunto per un'azienda.",
+    "Dettaglio tecnico": "Fornisci una risposta tecnica e dettagliata, focalizzandoti su strumenti, linguaggi e metodologie.",
+    "Project management": "Focalizzati sulle capacità di gestione, coordinamento, scadenze e metodologie di lavoro.",
+    "Droni e UAV": "Evidenzia le competenze specifiche nel settore droni, pilotaggio, normativa e tecnologia UAV.",
+    "AI e automazione": "Metti in risalto le competenze in intelligenza artificiale, machine learning e automazione dei processi."
+}
+
 prompt_base = f"""
-Sei un assistente AI progettato per rispondere a domande su Giammario de Candia, basandoti esclusivamente sulle informazioni seguenti:
+Sei un assistente AI professionale specializzato nel presentare il profilo di Giammario de Candia a recruiter, aziende e potenziali collaboratori.
+Il tuo obiettivo è rispondere alle domande basandoti ESCLUSIVAMENTE sulle informazioni contenute nel CV fornito di seguito.
 
-{cv_text}
+### REGOLE DI COMPORTAMENTO:
+1. **Fonte Unica**: Utilizza solo i dati presenti nel testo del CV. Non inventare esperienze, titoli, aziende, competenze o certificazioni.
+2. **Onestà**: Se un'informazione non è presente nel CV, rispondi esattamente: "Informazione non disponibile nel CV."
+3. **Professionalità**: Mantieni un tono professionale, strutturato e utile. Rispondi come se fossi un esperto HR che presenta il candidato.
+4. **Lingua**: Rispondi sempre in italiano, a meno che l'utente non ti rivolga una domanda in un'altra lingua o ti chieda esplicitamente di tradurre.
+5. **Focus Selezionato**: {istruzioni_modalita[modalita]}
+6. **Sintesi**: Sii conciso ma esaustivo. Usa elenchi puntati se aiuta la leggibilità.
 
-Rispondi in modo chiaro, professionale e sintetico, come se fossi l'addetto HR che lo presenta. Non inventare nulla. Se la risposta non è presente nel CV, dì semplicemente 'Informazione non disponibile'.
+### TESTO DEL CV:
+{cv_text if cv_text else 'ATTENZIONE: Nessun dato estratto dal CV. Avvisa l\'utente.'}
 """
 
 # --- FILTRO PROVIDER & MODELLI ---
@@ -90,46 +183,49 @@ def chiedi_con_fallback(messages, timeout_sec=30):
 
     for modello in modelli:
         try:
-            st.info(f"💡 Sto provando con: `{modello}`", icon="ℹ️")
-            client = Client()
-            start = time.time()
-            risposta = client.chat.completions.create(
-                model=modello,
-                messages=messages
-            ).choices[0].message.content.strip()
-            elapsed = time.time() - start
-            if elapsed > timeout_sec:
-                st.warning(f"⏱️ Timeout superato ({int(elapsed)}s), passo al prossimo modello...")
-                continue
-            if risposta:
-                return risposta, modello
+            with st.status(f"💡 Sto interrogando il modello: `{modello}`...", expanded=False) as status:
+                client = Client()
+                start = time.time()
+                risposta = client.chat.completions.create(
+                    model=modello,
+                    messages=messages
+                ).choices[0].message.content.strip()
+                elapsed = time.time() - start
+
+                if elapsed > timeout_sec:
+                    status.update(label=f"⏱️ Timeout con `{modello}`", state="error")
+                    continue
+
+                if risposta:
+                    status.update(label=f"✅ Risposta generata con successo!", state="complete")
+                    return risposta, modello
         except Exception as e:
-            st.warning(f"⚠️ Fallito con `{modello}`: {e}")
             continue
     return None, None
 
-# --- UI CHAT ---
-query = st.text_input("📨 Scrivi la tua domanda su Giammario:")
-
+# --- ESECUZIONE QUERY ---
 if query:
-    with st.spinner("Sto pensando..."):
+    with st.spinner("Analisi in corso..."):
         messages = [
             {"role": "system", "content": prompt_base},
-            {"role": "user", "content": f"Rispondi in meno di 300 parole. {query}"},
+            {"role": "user", "content": f"Rispondi in modo professionale. {query}"},
         ]
         risposta, modello_usato = chiedi_con_fallback(messages)
 
         if risposta:
-            st.success(f"📌 Risposta dell'agente (modello: `{modello_usato or 'sconosciuto'}`):")
+            st.markdown(f"### 📌 Risposta (Modello: `{modello_usato}`) ")
             st.markdown(
-                f"<div style='background-color:#1f2937;padding:10px;border-radius:10px;'>{risposta}</div>",
+                f"<div style='background-color:#1f2937;padding:20px;border-radius:10px;border-left:5px solid #00bfff;'>{risposta}</div>",
                 unsafe_allow_html=True
             )
         else:
-            st.error("❌ Nessun modello ha risposto. Il sistema potrebbe essere sovraccarico o bloccato. Riprova più tardi.")
+            st.error("❌ Al momento non è stato possibile ottenere una risposta. Riprova tra poco.")
 
 # --- FOOTER ---
 st.markdown("""
-    <hr style="margin-top: 40px;">
-    <p style='text-align: center; font-size: 12px;'>Powered by g4f • Tema droni notturni • Codice sviluppato per Giammario</p>
+    <br><br>
+    <hr style="border: 0.5px solid #374151;">
+    <p style='text-align: center; font-size: 12px; color: #9ca3af;'>
+        Powered by G4F AI Engine • Sviluppato per Giammario de Candia • © 2024
+    </p>
 """, unsafe_allow_html=True)
