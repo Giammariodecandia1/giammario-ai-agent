@@ -70,17 +70,18 @@ with st.sidebar:
             st.warning("Impossibile estrarre testo dal file. Potrebbe essere un PDF basato su immagini.")
 
     st.markdown("---")
-    st.subheader("💡 Domande Suggerite")
+    st.subheader("⚡ Domande rapide")
 
-    domande_suggerite = [
-        "Qual è il profilo professionale di Giammario?",
-        "Che esperienza ha nella gestione di progetti?",
-        "Che competenze ha nel settore droni?",
-        "Che competenze ha in ambito AI e automazione?",
-        "Per quali ruoli potrebbe essere adatto?"
+    domande_rapide = [
+        "Presentami il profilo di Giammario in 5 righe.",
+        "Quali sono le sue competenze principali?",
+        "Qual è la sua esperienza nei droni?",
+        "Qual è la sua esperienza nel project management?",
+        "Quali competenze ha in ambito AI?",
+        "Per quali ruoli professionali è più adatto?"
     ]
 
-    for domanda in domande_suggerite:
+    for domanda in domande_rapide:
         if st.button(domanda):
             st.session_state.suggested_query = domanda
 
